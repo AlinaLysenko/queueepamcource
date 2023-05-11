@@ -1,6 +1,7 @@
 package com.epam.queue.task;
 
 import com.epam.queue.tasks.interfaces.Receiver;
+import com.epam.queue.tasks.rabbit.queue.SimpleReceiver;
 import com.epam.queue.tasks.rabbit.simple.tasks.ImplementReceiverTask;
 import com.epam.queue.tasks.utils.HttpClientUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -39,7 +40,7 @@ public class ImplementReceiverTaskIT {
 
     @Test
     public void testReceiver() {
-        task.applyReceiver(/* Поместите объект Receiver сюда. */ null);
+        task.applyReceiver(new SimpleReceiver());
         task.startSender();
         //Сообщений в очереди оставаться не должно:
         assertEquals(0, HttpClientUtils.getMessageReady(Q_NAME));
