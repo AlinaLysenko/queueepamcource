@@ -2,29 +2,25 @@ package com.epam.queue.tasks.rabbit.queue;
 
 import com.epam.queue.tasks.interfaces.Receiver;
 import com.epam.queue.tasks.rabbit.Connections;
-import com.rabbitmq.client.Channel;
-import com.rabbitmq.client.Connection;
-import com.rabbitmq.client.DeliverCallback;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
+import com.rabbitmq.client.*;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeoutException;
 
-public class PersistReceiverToFix implements Receiver {
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-    private static final Logger logger = LoggerFactory.getLogger(PersistReceiver.class);
+public class SimpleReceiver implements Receiver {
 
-    private final int id = ThreadLocalRandom.current().nextInt(100);
+    private static final Logger logger = LoggerFactory.getLogger(SimpleReceiver.class);
+
     private final Connection connection;
     private final Channel channel;
     private String queueName;
 
-    public PersistReceiverToFix() {
+    public SimpleReceiver() {
         this.connection = Connections.getConnection();
         this.channel = Connections.getChannel(connection);
     }
@@ -34,37 +30,24 @@ public class PersistReceiverToFix implements Receiver {
         this.queueName = name;
     }
 
-    /* TODO: fix this method. */
-    @Override
     public void receive() {
         try {
-            boolean durable = true;
-            channel.queueDeclare(queueName, durable, false, false, null);
-            System.out.println(" [*] Waiting for messages. [rcvId = " + id + "]");
-
-            channel.basicQos(1);
+            channel.queueDeclare(queueName, false, false, false, null);
 
             DeliverCallback deliverCallback = (consumerTag, delivery) -> {
                 String message = new String(delivery.getBody(), StandardCharsets.UTF_8);
-
-                System.out.println(" [x] Received '" + message + "'" + ". [rcvId = " + id + "]");
-
-                channel.basicAck(delivery.getEnvelope().getDeliveryTag(), false);
-
-                System.out.println(" [x] Message acked. [msg=" + message + ", rcvId = " + id + "]");
-
+                System.out.println(" [x] Received '" + message + "'");
             };
-            boolean autoAck = false;
-            channel.basicConsume(queueName, autoAck, deliverCallback, consumerTag -> {
-            });
+
+            channel.basicConsume(queueName, true, deliverCallback, consumerTag -> {});
+
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
 
-    @Override
-    public void close() {
-        if (Objects.nonNull(channel) && channel.isOpen()) {
+    public synchronized void close() {
+        if (Objects.nonNull(channel)) {
             try {
                 channel.close();
                 logger.info("Channel closed.");
@@ -72,7 +55,7 @@ public class PersistReceiverToFix implements Receiver {
                 e.printStackTrace();
             }
         }
-        if (Objects.nonNull(connection) && connection.isOpen()) {
+        if (Objects.nonNull(connection)) {
             try {
                 connection.close();
                 logger.info("Connection closed.");
